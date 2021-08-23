@@ -56,3 +56,4 @@ dkms.conf
 **/Backup/
 **/*.bak
 **/.~lock.*
+*.launch
