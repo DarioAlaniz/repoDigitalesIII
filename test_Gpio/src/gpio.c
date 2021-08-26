@@ -1,7 +1,7 @@
 //#include "LPC17xx.h"
 #include "gpio.h"
-#define limit 16U
-#define mask 0xFF
+#define LIMIT 16U
+#define MASK 0xFF
 
 /*
  * Cambiar el valor con el que configura el pin para el modo y pinsel(seguir esquema de setConfGpio0)
@@ -12,241 +12,119 @@
 
 
 /**--------------------------------------------------------------------------------
- * Configuracion GPIO0
- * @param *gpio puntero a la estructura del gpio
- * @param pin 	numero del pin a configurar
- * @param modo 	modo de configuracion
- * 				0 pin has a pull-up resistor enabled.
- * 				1 pin has repeater mode enabled.
- * 				2 pin has neither pull-up nor pull-down.
- * 				3 has a pull-down resistor enabled.
- * @param dir 	0-->input/ 1-->output
+ * Configuracion GPIO
+ * @param uint8_t 	numero de gpio a configurar.
+ * @param pin 		numero del pin a configurar.
+ * @param modo 		modo de configuracion.
+ * 					0 pin has a pull-up resistor enabled.
+ * 					1 pin has repeater mode enabled.
+ * 					2 pin has neither pull-up nor pull-down.
+ * 					3 has a pull-down resistor enabled.
+ * @param dir 		0-->input/ 1-->output.
  *--------------------------------------------------------------------------------
  * */
-void setConfGpio0(LPC_GPIO_TypeDef * gpio,uint8_t pin,uint8_t modo,uint8_t dir){
-	if(pin<limit) {
-		pin = (mask&pin*2)
-		LPC_PINCON->PINSEL0  &= ~(0b11<< pin);
+
+void setConfGpio(uint8_t gpio,uint8_t pin,uint8_t modo,uint8_t dir){
+	uint8_t pin_aux = pin;
+	int * pPinSel 		= (int *)(LPC_PINCON_BASE+(sizeof(int)*gpio*2));		//PINSEL0 ---> 0x4002 C000
+	int * pPinMode 		= (int *)(LPC_PINCON_BASE + (sizeof(int) * 16)+ (sizeof(int)*gpio*2)); 	//PINMODE0 ---> 0x4002 C040
+	int * gpioFioDir 	= (int* )(LPC_GPIO_BASE + (sizeof(int)*8*gpio));				//FIODIR ----> 0x2009 C000
+	if (pin<LIMIT){
+		pin_aux 		= (MASK&pin*2);
+		*(pPinSel)		&= ~(0b11<< pin_aux);
 		switch(0x03&modo){
-		case 0:// 00 pin has a pull-up resistor enabled.
-			LPC_PINCON->PINMODE0 &= ~(0b11<< pin);
-			break;
-		case 1:// 01 pin has repeater mode enabled.
-			LPC_PINCON->PINMODE0 |= (0b1<< pin);
-			LPC_PINCON->PINMODE0 &= ~(0b1<< (pin+1));
-			break;
-		case 2: //10 pin has neither pull-up nor pull-down.
-			LPC_PINCON->PINMODE0 &= ~(0b1<< pin);
-			LPC_PINCON->PINMODE0 |= (0b1<< (pin+1));
-			break;
-		case 3: //11 has a pull-down resistor enabled.
-			LPC_PINCON->PINMODE0 |= (0b11<< pin);
-			break;
-		}
+			case 0:// 00 pin has a pull-up resistor enabled.
+				*pPinMode 	&= ~(0b11<< pin_aux);
+				break;
+			case 1:// 01 pin has repeater mode enabled.
+				*pPinMode 	|= (0b1<< pin_aux);
+				*pPinMode 	&= ~(0b1<< (pin_aux+1));
+				break;
+			case 2: //10 pin has neither pull-up nor pull-down.
+				*pPinMode 	&= ~(0b1<< pin_aux);
+				*pPinMode 	|= (0b1<< (pin_aux+1));
+				break;
+			case 3: //11 has a pull-down resistor enabled.
+				*pPinMode 	|= (0b11<< pin_aux);
+				break;
+			}
 	}
-	else {
-		pin = ((mask&pin*2)-32)
-		LPC_PINCON->PINSEL1 &= ~(0b11<<	pin);
+	else{
+		pin_aux 		= ((MASK&pin*2)-32);
+		*(pPinSel + 1)	&= ~(0b11<< pin_aux);
 		switch(0x03&modo){
-		case 0:// 00 pin has a pull-up resistor enabled.
-			LPC_PINCON->PINMODE1 &= ~(0b11<< pin);
-			break;
-		case 1:// 01 pin has repeater mode enabled.
-			LPC_PINCON->PINMODE1 |= (0b1<< pin);
-			LPC_PINCON->PINMODE1 &= ~(0b1<< (pin+1));
-			break;
-		case 2: //10 pin has neither pull-up nor pull-down.
-			LPC_PINCON->PINMODE1 &= ~(0b1<< pin);
-			LPC_PINCON->PINMODE1 |= (0b1<< (pin+1));
-			break;
-		case 3: //11 has a pull-down resistor enabled.
-			LPC_PINCON->PINMODE1 |= (0b11<< pin);
-			break;
-		}
+			case 0:// 00 pin has a pull-up resistor enabled.
+				*(pPinMode+1) 	&= ~(0b11<< pin_aux);
+				break;
+			case 1:// 01 pin has repeater mode enabled.
+				*(pPinMode+1) 	|= (0b1<< pin_aux);
+				*(pPinMode+1) 	&= ~(0b1<< (pin_aux+1));
+				break;
+			case 2: //10 pin has neither pull-up nor pull-down.
+				*(pPinMode+1) 	&= ~(0b1<< pin_aux);
+				*(pPinMode+1) 	|= (0b1<< (pin_aux+1));
+				break;
+			case 3: //11 has a pull-down resistor enabled.
+				*(pPinMode+1) 	|= (0b11<< pin_aux);
+				break;
+			}
 	}
 	//Configuro la direccion si es entrada 0, salida 1
 	if( (0x1&dir) == 0b1)
-		gpio->FIODIR |= (0x1&dir<<pin); //output
+		*gpioFioDir |= ((0x1&dir)<<pin); //output
 	else
-		gpio->FIODIR &= ~(0x1&dir<<pin); //input
+		*gpioFioDir &= ~((0x1&dir)<<pin); //input
 }
 
-void setConfGpio1(LPC_GPIO_TypeDef * gpio,uint8_t pin,uint8_t modo,uint8_t dir){
-		if(pin<=16) {
-			LPC_PINCON->PINSEL2  &= ~(0b11<< (0xFF&pin*2));
-			switch(0x03&modo){
-			case 0:// 00 pin has a pull-up resistor enabled.
-				LPC_PINCON->PINMODE2 &= ~(0b11<< (0xFF&pin*2));
-				break;
-			case 1:// 01 pin has repeater mode enabled.
-				LPC_PINCON->PINMODE2 |= (0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE2 &= ~(0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 2: //10 pin has neither pull-up nor pull-down.
-				LPC_PINCON->PINMODE2 &= ~(0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE2 |= (0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 3: //11 has a pull-down resistor enabled.
-				LPC_PINCON->PINMODE2 |= (0b11<< (0xFF&pin*2));
-				break;
-			}
-		}
-		else {
-			LPC_PINCON->PINSEL3 &= ~(0b11<<	((0xFF&pin*2)-32));
-			switch(0x03&modo){
-			case 0:// 00 pin has a pull-up resistor enabled.
-				LPC_PINCON->PINMODE3 &= ~(0b11<< (0xFF&pin*2));
-				break;
-			case 1:// 01 pin has repeater mode enabled.
-				LPC_PINCON->PINMODE3 |= (0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE3 &= ~(0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 2: //10 pin has neither pull-up nor pull-down.
-				LPC_PINCON->PINMODE3 &= ~(0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE3 |= (0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 3: //11 has a pull-down resistor enabled.
-				LPC_PINCON->PINMODE3 |= (0b11<< (0xFF&pin*2));
-				break;
-			}
-		}
-		//Configuro la direccion si es entrada 0, salida 1
-		if( (0x1&dir) == 0b1) gpio->FIODIR |= (0x1&dir<<pin);
-		else gpio->FIODIR &= ~(0x1&dir<<pin);
 
-}
-
-void setConfGpio2(LPC_GPIO_TypeDef * gpio,uint8_t pin,uint8_t modo,uint8_t dir){
-		if(pin<=15) {
-			LPC_PINCON->PINSEL4  &= ~(0b11<< (0xFF&pin*2));
-			switch(0x03&modo){
-			case 0:// 00 pin has a pull-up resistor enabled.
-				LPC_PINCON->PINMODE4 &= ~(0b11<< (0xFF&pin*2));
-				break;
-			case 1:// 01 pin has repeater mode enabled.
-				LPC_PINCON->PINMODE4 |= (0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE4 &= ~(0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 2: //10 pin has neither pull-up nor pull-down.
-				LPC_PINCON->PINMODE4 &= ~(0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE4 |= (0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 3: //11 has a pull-down resistor enabled.
-				LPC_PINCON->PINMODE4 |= (0b11<< (0xFF&pin*2));
-				break;
-			}
-		}
-		else {
-			LPC_PINCON->PINSEL5 &= ~(0b11<<	((0xFF&pin*2)-32));
-			switch(0x03&modo){
-			case 0:// 00 pin has a pull-up resistor enabled.
-				LPC_PINCON->PINMODE5 &= ~(0b11<< (0xFF&pin*2));
-				break;
-			case 1:// 01 pin has repeater mode enabled.
-				LPC_PINCON->PINMODE5 |= (0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE5 &= ~(0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 2: //10 pin has neither pull-up nor pull-down.
-				LPC_PINCON->PINMODE5 &= ~(0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE5 |= (0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 3: //11 has a pull-down resistor enabled.
-				LPC_PINCON->PINMODE5 |= (0b11<< (0xFF&pin*2));
-				break;
-			}
-		}
-		//Configuro la direccion si es entrada 0, salida 1
-		if( (0x1&dir) == 0b1) gpio->FIODIR |= (0x1&dir<<pin);
-		else gpio->FIODIR &= ~(0x1&dir<<pin);
-}
-
-void setConfGpio3(LPC_GPIO_TypeDef * gpio,uint8_t pin,uint8_t modo,uint8_t dir){
-		if(pin<=15) {
-			LPC_PINCON->PINSEL6  &= ~(0b11<< (0xFF&pin*2));
-			switch(0x03&modo){
-			case 0:// 00 pin has a pull-up resistor enabled.
-				LPC_PINCON->PINMODE6 &= ~(0b11<< (0xFF&pin*2));
-				break;
-			case 1:// 01 pin has repeater mode enabled.
-				LPC_PINCON->PINMODE6 |= (0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE6 &= ~(0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 2: //10 pin has neither pull-up nor pull-down.
-				LPC_PINCON->PINMODE6 &= ~(0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE6 |= (0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 3: //11 has a pull-down resistor enabled.
-				LPC_PINCON->PINMODE6 |= (0b11<< (0xFF&pin*2));
-				break;
-			}
-		}
-		else {
-			LPC_PINCON->PINSEL7 &= ~(0b11<<	((0xFF&pin*2)-32));
-			switch(0x03&modo){
-			case 0:// 00 pin has a pull-up resistor enabled.
-				LPC_PINCON->PINMODE7 &= ~(0b11<< (0xFF&pin*2));
-				break;
-			case 1:// 01 pin has repeater mode enabled.
-				LPC_PINCON->PINMODE7 |= (0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE7 &= ~(0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 2: //10 pin has neither pull-up nor pull-down.
-				LPC_PINCON->PINMODE7 &= ~(0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE7 |= (0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 3: //11 has a pull-down resistor enabled.
-				LPC_PINCON->PINMODE7 |= (0b11<< (0xFF&pin*2));
-				break;
-			}
-		}
-		//Configuro la direccion si es entrada 0, salida 1
-		if( (0x1&dir) == 0b1) gpio->FIODIR |= (0x1&dir<<pin);
-		else gpio->FIODIR &= ~(0x1&dir<<pin);
-}
-
-void setConfGpio4(LPC_GPIO_TypeDef * gpio,uint8_t pin,uint8_t modo,uint8_t dir){
-		if(pin<=15) {
-			LPC_PINCON->PINSEL8  &= ~(0b11<< (0xFF&pin*2));
-			switch(0x03&modo){
-			case 0:// 00 pin has a pull-up resistor enabled.
-				LPC_PINCON->PINMODE8 &= ~(0b11<< (0xFF&pin*2));
-				break;
-			case 1:// 01 pin has repeater mode enabled.
-				LPC_PINCON->PINMODE8 |= (0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE8 &= ~(0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 2: //10 pin has neither pull-up nor pull-down.
-				LPC_PINCON->PINMODE8 &= ~(0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE8 |= (0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 3: //11 has a pull-down resistor enabled.
-				LPC_PINCON->PINMODE8 |= (0b11<< (0xFF&pin*2));
-				break;
-			}
-		}
-		else {
-			LPC_PINCON->PINSEL9 &= ~(0b11<<	((0xFF&pin*2)-32));
-			switch(0x03&modo){
-			case 0:// 00 pin has a pull-up resistor enabled.
-				LPC_PINCON->PINMODE9 &= ~(0b11<< (0xFF&pin*2));
-				break;
-			case 1:// 01 pin has repeater mode enabled.
-				LPC_PINCON->PINMODE9 |= (0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE9 &= ~(0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 2: //10 pin has neither pull-up nor pull-down.
-				LPC_PINCON->PINMODE9 &= ~(0b1<< (0xFF&pin*2));
-				LPC_PINCON->PINMODE9 |= (0b1<< ((0xFF&pin*2)+1));
-				break;
-			case 3: //11 has a pull-down resistor enabled.
-				LPC_PINCON->PINMODE9 |= (0b11<< (0xFF&pin*2));
-				break;
-			}
-		}
-		//Configuro la direccion si es entrada 0, salida 1
-		if( (0x1&dir) == 0b1) gpio->FIODIR |= (0x1&dir<<pin);
-		else gpio->FIODIR &= ~(0x1&dir<<pin);
-}
+//void setConfGpio0(LPC_GPIO_TypeDef * gpio,uint8_t pin,uint8_t modo,uint8_t dir){
+//	uint8_t pin_aux = pin;
+//	if(pin<LIMIT) {
+//		pin_aux = (MASK&pin*2);
+//		LPC_PINCON->PINSEL0  		&= ~(0b11<< pin_aux);
+//		switch(0x03&modo){
+//		case 0:// 00 pin has a pull-up resistor enabled.
+//			LPC_PINCON->PINMODE0 	&= ~(0b11<< pin_aux);
+//			break;
+//		case 1:// 01 pin has repeater mode enabled.
+//			LPC_PINCON->PINMODE0 	|= (0b1<< pin_aux);
+//			LPC_PINCON->PINMODE0 	&= ~(0b1<< (pin_aux+1));
+//			break;
+//		case 2: //10 pin has neither pull-up nor pull-down.
+//			LPC_PINCON->PINMODE0 	&= ~(0b1<< pin_aux);
+//			LPC_PINCON->PINMODE0 	|= (0b1<< (pin_aux+1));
+//			break;
+//		case 3: //11 has a pull-down resistor enabled.
+//			LPC_PINCON->PINMODE0 	|= (0b11<< pin_aux);
+//			break;
+//		}
+//	}
+//	else {
+//		pin_aux = ((MASK&pin*2)-32);
+//		LPC_PINCON->PINSEL1 		&= ~(0b11<<	pin_aux);
+//		switch(0x03&modo){
+//		case 0:// 00 pin has a pull-up resistor enabled.
+//			LPC_PINCON->PINMODE1 	&= ~(0b11<< pin_aux);
+//			break;
+//		case 1:// 01 pin has repeater mode enabled.
+//			LPC_PINCON->PINMODE1 	|= (0b1<< pin_aux);
+//			LPC_PINCON->PINMODE1 	&= ~(0b1<< (pin_aux+1));
+//			break;
+//		case 2: //10 pin has neither pull-up nor pull-down.
+//			LPC_PINCON->PINMODE1 	&= ~(0b1<< pin_aux);
+//			LPC_PINCON->PINMODE1 	|= (0b1<< (pin_aux+1));
+//			break;
+//		case 3: //11 has a pull-down resistor enabled.
+//			LPC_PINCON->PINMODE1 	|= (0b11<< pin_aux);
+//			break;
+//		}
+//	}
+//	//Configuro la direccion si es entrada 0, salida 1
+//	if( (0x1&dir) == 0b1)
+//		gpio->FIODIR |= (0x1&dir<<pin); //output
+//	else
+//		gpio->FIODIR &= ~(0x1&dir<<pin); //input
+//}
 
 
 /**--------------------------------------------------------------------------------
