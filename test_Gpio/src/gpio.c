@@ -21,6 +21,8 @@
  * 					2 pin has neither pull-up nor pull-down.
  * 					3 has a pull-down resistor enabled.
  * @param dir 		0-->input/ 1-->output.
+ *
+ * Nota :  no funciona para todos los gpio, solo para gpio 0,1
  *--------------------------------------------------------------------------------
  * */
 
@@ -75,57 +77,6 @@ void setConfGpio(uint8_t gpio,uint8_t pin,uint8_t modo,uint8_t dir){
 	else
 		*gpioFioDir &= ~((0x1&dir)<<pin); //input
 }
-
-
-//void setConfGpio0(LPC_GPIO_TypeDef * gpio,uint8_t pin,uint8_t modo,uint8_t dir){
-//	uint8_t pin_aux = pin;
-//	if(pin<LIMIT) {
-//		pin_aux = (MASK&pin*2);
-//		LPC_PINCON->PINSEL0  		&= ~(0b11<< pin_aux);
-//		switch(0x03&modo){
-//		case 0:// 00 pin has a pull-up resistor enabled.
-//			LPC_PINCON->PINMODE0 	&= ~(0b11<< pin_aux);
-//			break;
-//		case 1:// 01 pin has repeater mode enabled.
-//			LPC_PINCON->PINMODE0 	|= (0b1<< pin_aux);
-//			LPC_PINCON->PINMODE0 	&= ~(0b1<< (pin_aux+1));
-//			break;
-//		case 2: //10 pin has neither pull-up nor pull-down.
-//			LPC_PINCON->PINMODE0 	&= ~(0b1<< pin_aux);
-//			LPC_PINCON->PINMODE0 	|= (0b1<< (pin_aux+1));
-//			break;
-//		case 3: //11 has a pull-down resistor enabled.
-//			LPC_PINCON->PINMODE0 	|= (0b11<< pin_aux);
-//			break;
-//		}
-//	}
-//	else {
-//		pin_aux = ((MASK&pin*2)-32);
-//		LPC_PINCON->PINSEL1 		&= ~(0b11<<	pin_aux);
-//		switch(0x03&modo){
-//		case 0:// 00 pin has a pull-up resistor enabled.
-//			LPC_PINCON->PINMODE1 	&= ~(0b11<< pin_aux);
-//			break;
-//		case 1:// 01 pin has repeater mode enabled.
-//			LPC_PINCON->PINMODE1 	|= (0b1<< pin_aux);
-//			LPC_PINCON->PINMODE1 	&= ~(0b1<< (pin_aux+1));
-//			break;
-//		case 2: //10 pin has neither pull-up nor pull-down.
-//			LPC_PINCON->PINMODE1 	&= ~(0b1<< pin_aux);
-//			LPC_PINCON->PINMODE1 	|= (0b1<< (pin_aux+1));
-//			break;
-//		case 3: //11 has a pull-down resistor enabled.
-//			LPC_PINCON->PINMODE1 	|= (0b11<< pin_aux);
-//			break;
-//		}
-//	}
-//	//Configuro la direccion si es entrada 0, salida 1
-//	if( (0x1&dir) == 0b1)
-//		gpio->FIODIR |= (0x1&dir<<pin); //output
-//	else
-//		gpio->FIODIR &= ~(0x1&dir<<pin); //input
-//}
-
 
 /**--------------------------------------------------------------------------------
  * Configuracion Setea un valor en el pin del gpio dado
