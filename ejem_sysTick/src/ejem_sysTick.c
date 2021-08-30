@@ -23,13 +23,13 @@
 
 
 //TODO: define systick
-#define SYSTICK_BASE		0xE000 E010 					//SysTick Base Address
+#define SYSTICK_BASE		0xE000E010 					//SysTick Base Address
 #define SYSTICK 			((mySystick*) SysTick_BASE)
 //bits of config systick
-#define SYS_ENABLE			0 //1 counter enable, 	0 counter disable
-#define	SYS_TICKINT			1 //1 interrup enable, 	0 interrup disable
-#define SYS_CLKSOURCE		2 //1 cpu clock select, 0 external clock select
-#define SYS_COUNTFLAG 		16 // flag is set when the system Tick counter counts down to 0
+#define SYS_ENABLE			0 	//1 counter enable, 	0 counter disable
+#define	SYS_TICKINT			1 	//1 interrup enable, 	0 interrup disable
+#define SYS_CLKSOURCE		2 	//1 cpu clock select, 0 external clock select
+#define SYS_COUNTFLAG 		16 	// flag is set when the system Tick counter counts down to 0
 #define SYS_COUNTFLAG_MASK 	(1<<SYS_COUNTFLAG)
 
 uint32_t calc_load_systick(uint32_t freq);
