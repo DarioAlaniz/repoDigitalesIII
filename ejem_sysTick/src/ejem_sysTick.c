@@ -47,7 +47,7 @@ typedef struct
 int main(void) {
 	SystemInit();
 	setGpio();
-	SYSTICK->STRELOAD 	= calc_load_systick(100); //max 16.77ms
+	SYSTICK->STRELOAD 	= calc_load_systick(100); //max 167.7ms
 	SYSTICK->STCTRL  	|= (1<<SYS_ENABLE) | (1<<SYS_TICKINT) | (1<<SYS_CLKSOURCE);
 	SYSTICK->STCURR 	=	0; //limpio el contodar
  	while(1){
