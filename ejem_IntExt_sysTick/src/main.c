@@ -36,8 +36,14 @@ int main(void) {
 			LPC_GPIO3->FIOPIN ^= (1<<LED_BLUE);
 			flag_Eint0 = 0;
 		}
+		if(count == duty) {
+				LPC_GPIO0->FIOPIN  	&= ~(1<<PIN_OUT);			//cuando el contador es igual al duty se pone la salida en cero
+			}
+		else if (count == period){
+				LPC_GPIO0->FIOPIN  	|= (1<<PIN_OUT);			//cuando el contador llega al periodo setea la salida en 1
+				count = 0;
+		}
 	}
-
 }
 
 void configGpio(void){
@@ -88,13 +94,6 @@ void EINT0_IRQHandler(void){
 
 void SysTick_Handler(void){
 	count++;
-	if(count == duty) {
-		LPC_GPIO0->FIOPIN  	&= ~(1<<PIN_OUT);			//cuando el contador es igual al duty se pone la salida en cero
-	}
-	else if (count == period){
-		LPC_GPIO0->FIOPIN  	|= (1<<PIN_OUT);			//cuando el contador llega al periodo setea la salida en 1
-		count = 0;
-	}
-	SysTick->VAL  		 	=	0;							//restablesco para que cuente desde cero cuando salga de la interrupcion
-	SysTick->CTRL;										//no hace falta limpiar la bandera, pero se limpia leyendo el registro STCTRL
+	SysTick->VAL  		 	=	0;							//restablesco para que cuente desde cero cuando salga de la interrupcion, limpia el flag
+//	SysTick->CTRL 			&=	SysTick->CTRL;				//no hace falta limpiar la bandera, pero se limpia leyendo el registro STCTRL
 }
