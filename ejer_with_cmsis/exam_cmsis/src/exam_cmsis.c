@@ -47,14 +47,14 @@ void confTimer0(void){
 	TIM_MATCHCFG_Type conf_match; 		//match config
 	//Configuracion prescaler
 	conf_prescale.PrescaleOption 	= 0;	 				//No habilito la opcion de micro segundos, ya que lo hacer por defecto con clk/4 y yo quiero por 1.
-	conf_prescale.PrescaleValue 	= 10000; 				//10us
+	conf_prescale.PrescaleValue 	= 5000; 				//100us
 	//Configuracion match
 	conf_match.ExtMatchOutputType 	= 3; 					//toggle en el P0.9
 	conf_match.IntOnMatch 		  	= 0;					//sin interrupcion
 	conf_match.MatchChannel 	  	= 3;					//MAT2.3
 	conf_match.StopOnMatch			= 0;
 	conf_match.ResetOnMatch			= 1;					//reset en match
-	conf_match.MatchValue 			= 99;					//Valor a cargar para establecer 10ms
+	conf_match.MatchValue 			= 199;					//Valor a cargar para establecer 10ms
 
 	//inicializo el timer
 	TIM_Init(LPC_TIM2, TIM_TIMER_MODE ,&conf_prescale);
