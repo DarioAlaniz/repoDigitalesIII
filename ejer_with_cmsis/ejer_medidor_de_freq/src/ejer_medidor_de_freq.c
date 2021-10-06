@@ -64,10 +64,10 @@ int main(void) {
     								//como el timer2 esta seteado con una base de tiempo de 10us -->100Khz
     								//entonces aumentar el match hace que duplique esa frecuencia
     		TIM_Cmd(LPC_TIM2, 1);   //vuelvo a habilitar el timer2
+    		TIM_ResetCounter(LPC_TIM2);
     	}
     	if(flag_CapTimer3){
     		flag_CapTimer3 	= 0;
-    		current_val		= TIM_GetCaptureValue(LPC_TIM3, 0); //guardo el valor del timer3
     		if(!firt_int_timer3){
     			firt_int_timer3 = 1; 			// no hago nada en la primera vez que entra
     		}
@@ -77,6 +77,8 @@ int main(void) {
     		else{
     			period = current_val - previous_val;	//obtengo el periodo
     			//para obtener el periodo hacemos (period + 1)/100e6
+    			//no se cumple cuando el periodo de la señal es igual o mayor a 500khz
+    			//puede ser un problema del tiempo de respuesta del pin, consultar!!!!
     		}
     		previous_val 	= current_val;  	//copio el valor capturado
     	}
@@ -94,12 +96,13 @@ void confGpio(void){
 	PINSEL_ConfigPin(&pinCfg);
 	pinCfg.Pinnum 	= 23; 	//P0.23
 	pinCfg.Funcnum 	= 3; 	//CAP3.0
+	pinCfg.Pinmode	= 1;	//sin pull-down ni pull-up
 	PINSEL_ConfigPin(&pinCfg);
 	pinCfg.Portnum 	= 2;
 	pinCfg.Pinnum	= 10;  	//P2.10
 	pinCfg.Funcnum	= 1;	//EINT0
+	pinCfg.Pinmode	= 0;	//pull-up
 	PINSEL_ConfigPin(&pinCfg);
-	//por defecto pull up!!
 	return;
 }
 
@@ -109,7 +112,7 @@ void confIntExt(void){
 	Eint0Cfg.EXTI_Mode		= 1;		//activo por flanco
 	Eint0Cfg.EXTI_polarity	= 0;   		//flanco de bajada
 	EXTI_Config(&Eint0Cfg);				//configuro la interrupcion, limpia la bandera
-	NVIC_SetPriority(EINT0_IRQn, 5);	//establesco mayor prioridad que el timer3
+	NVIC_SetPriority(EINT0_IRQn, 5);	//establesco menor prioridad que el timer3
 	NVIC_EnableIRQ(EINT0_IRQn); 		//habilito la interrupcion
 	return;
 }
@@ -118,7 +121,7 @@ void confTimer3(void){
 	TIM_TIMERCFG_Type 	prescalerTmr3Cfg;
 	TIM_CAPTURECFG_Type capTmr3Cfg;
 	prescalerTmr3Cfg.PrescaleOption		= 0;
-	prescalerTmr3Cfg.PrescaleValue		= 1; //maximo valor que a 100Mhz da un periodo minimo de 10nSeg --> maxima frecuencia a medir 100Mhz
+	prescalerTmr3Cfg.PrescaleValue		= 1; //maximo valor que a 100Mhz da un periodo minimo de 10nSeg --> maxima frecuencia a medir: 100Mhz
 	//conf mode capture
 	capTmr3Cfg.CaptureChannel			= 0;  //canal 0
 	capTmr3Cfg.RisingEdge				= 1;  //por flanco de subida
@@ -130,7 +133,7 @@ void confTimer3(void){
 
 	TIM_ConfigCapture(LPC_TIM3, &capTmr3Cfg);
 	TIM_ClearIntCapturePending(LPC_TIM3,4);	  	//limpio la bandera del CAP3.0
-	NVIC_SetPriority(TIMER3_IRQn, 6);			//menor prioridad que EINT0
+	NVIC_SetPriority(TIMER3_IRQn, 4);			//mayor prioridad que EINT0
 	NVIC_EnableIRQ(TIMER3_IRQn); 			  	//habilito la interrupcion del timer 3
 	TIM_Cmd(LPC_TIM3,1);					  	//habilito el timer3
 	return;
@@ -140,7 +143,7 @@ void confTimer2(void){
 	TIM_MATCHCFG_Type	matchTmr2Cfg;
 	TIM_TIMERCFG_Type 	prescalerTmr2Cfg;
 	prescalerTmr2Cfg.PrescaleOption 	= 0;
-	prescalerTmr2Cfg.PrescaleValue 		= 1; 	//maxima resolucion 2e-8 --> 50Mhz
+	prescalerTmr2Cfg.PrescaleValue 		= 1; 	//maxima resolucion con prescaler en 1 es 2e-8 --> 50Mhz
 	//conf match mode
 	matchTmr2Cfg.MatchChannel			= 3; 	//MAT2.3
 	matchTmr2Cfg.ExtMatchOutputType		= 3;    //toggle P0.9
@@ -170,7 +173,8 @@ void EINT0_IRQHandler(void){
 }
 
 void TIMER3_IRQHandler(void){
-	TIM_ClearIntCapturePending(LPC_TIM3,4);	  //limpio la bandera del CAP3.0
+	current_val		= TIM_GetCaptureValue(LPC_TIM3, 0); //guardo el valor del timer3
+	TIM_ClearIntCapturePending(LPC_TIM3,4);	  			//limpio la bandera del CAP3.0
 	flag_CapTimer3 = 1;
 }
 
