@@ -20,24 +20,57 @@
 #include "lpc17xx_clkpwr.h"
 #include "lpc17xx_gpio.h"
 
-#define FREQ_SAMPLE		10000
+#define FREQ_SAMPLE		200000
 
 void confPin(void);
 void confAdc(void);
 void confTimer0(void);
 void confDac(void);
 
+uint16_t adc_buffer [520];			//buffer circular para ver si hay error en la medicion
+uint16_t length_buffer = sizeof(adc_buffer)/sizeof(adc_buffer[0]);
+uint32_t adc_value;
+uint32_t dac_value;
+uint16_t dac_value_test = 0;
+uint8_t flag_timer;
+uint8_t flag_adc;
 
-uint16_t adc_value;
 int main(void) {
+	SystemInit();
 	confPin();
 	confTimer0();
-	confAdc();
 	confDac();
+	confAdc();
 	TIM_Cmd(LPC_TIM0, ENABLE);							//habilito el timer
 	TIM_ResetCounter(LPC_TIM0);							//reset el timer
-    while(1) {
 
+    while(1) {
+//    	if(flag_adc){
+//    		flag_adc = 0;
+//    		for (int i=length_buffer-1;i>0;i--){
+//    			adc_buffer[i] = adc_buffer[i-1];
+//    		}
+//    		adc_buffer[0] =adc_value;
+//    	}
+    	if(flag_timer){
+    		flag_timer = 0;
+//    		dac_value  = dac_value_test ;
+//    		dac_value_test++;
+//    		if (dac_value_test == 1024) dac_value_test = 0;
+    		if ((adc_value >> 2) >= 1024 ){
+    			// no actualizo adc value hay ruido en la señal
+    			dac_value = dac_value;
+    		}
+    		else {
+    			dac_value	= (adc_value>>2);
+				DAC_UpdateValue(LPC_DAC, dac_value);
+    		}
+    		/*al pasar un valor directo del adc aparece un pico en la salida del dac,
+    		 * da a entender que se satura la salida del dac pero no deberia ya que el adc esta leyendo
+    		 * un valor fijo de 1v, investigando se llego a que es un problema del adc y se requiere un filtro pasa bajo
+    		 * en la entrada del adc!!!
+    		 * */
+    	}
     }
     return 0 ;
 }
@@ -59,48 +92,55 @@ void confPin(void){
 }
 
 void confAdc(void){
+	uint16_t clear_flag;
 	ADC_Init(LPC_ADC, FREQ_SAMPLE); 					//power on, habilito el PCADC
 	ADC_PowerdownCmd(LPC_ADC, ENABLE);					//pongo en funcionamiento el ADC
 	ADC_ChannelCmd(LPC_ADC, ADC_CHANNEL_0, ENABLE); 	//habilito solo el canal 0
 	ADC_StartCmd(LPC_ADC, ADC_START_ON_MAT01);			//habilito el adc para cuando hace match con el timer0
 	ADC_EdgeStartConfig(LPC_ADC, 1);
-	ADC_IntConfig(LPC_ADC,ADC_ADGINTEN,RESET);
+//	ADC_BurstCmd(LPC_ADC, ENABLE);
+	ADC_IntConfig(LPC_ADC,ADC_ADGINTEN,RESET);			//desabilito la interrup global que por defecto es 1
 	ADC_IntConfig(LPC_ADC,ADC_ADINTEN0,ENABLE);			//habilito la interrupcion para el canal 0
-	adc_value = ADC_ChannelGetData(LPC_ADC,ADC_CHANNEL_0);  //limpio la badera de interrupcion
+	clear_flag = ADC_ChannelGetData(LPC_ADC,ADC_CHANNEL_0);  //limpio la badera de interrupcion
+	NVIC_ClearPendingIRQ(ADC_IRQn);						// limpio la bandera
 	NVIC_EnableIRQ(ADC_IRQn);							//habilito la interrupcion por adc
 }
 
 
 void confTimer0(void){
-	TIM_MATCHCFG_Type confMatchTimer0 = {0};			//inicializo la struct con 0
+	TIM_MATCHCFG_Type confMatchTimer0 = {0};			//inicializo las struct
 	TIM_TIMERCFG_Type confPrescTimer0 = {0};
 
 	confPrescTimer0.PrescaleOption 	  = TIM_PRESCALE_TICKVAL;
-	confPrescTimer0.PrescaleValue	  = 500;			//10us con clk de timer a 100Mhz
+	confPrescTimer0.PrescaleValue	  = 50;				//1us con clk de timer a 100Mhz
 	TIM_Init(LPC_TIM0, TIM_TIMER_MODE, &confPrescTimer0);
 	CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_TIMER0, CLKPWR_PCLKSEL_CCLK_DIV_1);
 	confMatchTimer0.MatchChannel	  = 1;				//MAT0.1
 	confMatchTimer0.ResetOnMatch	  = 1;
-	confMatchTimer0.StopOnMatch		  = 0;
-	confMatchTimer0.MatchValue		  = 8;				//100us --> 10Khz de tasa de muestreo
+	confMatchTimer0.MatchValue		  = 8;				//5us --> 200Khz de tasa de muestreo
 	confMatchTimer0.IntOnMatch		  = ENABLE;			//habilito solo para comprobar que llega al match
 	confMatchTimer0.ExtMatchOutputType	= TIM_EXTMATCH_TOGGLE;
 	TIM_ConfigMatch(LPC_TIM0, &confMatchTimer0);
+
+	TIM_ClearIntPending(LPC_TIM0, TIM_MR1_INT);	    //limpio la bandera
+	NVIC_ClearPendingIRQ(TIMER0_IRQn);
 	NVIC_EnableIRQ(TIMER0_IRQn);
 }
 
 void confDac(void){
 	DAC_Init(LPC_DAC);  								//inicializo el dac en corriente maxima de 700uA y tiempo de respuesta 1us
+//	DAC_SetBias(LPC_DAC,1);
+	CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_DAC, CLKPWR_PCLKSEL_CCLK_DIV_1);
 }
 
 void ADC_IRQHandler(void){
-	uint16_t dac_value;
+	flag_adc  = 1;
 	adc_value = ADC_ChannelGetData(LPC_ADC,ADC_CHANNEL_0);  //obtengo el valor convertido
-	dac_value = adc_value >> 2; 							//como el dac es de 10 bit solo paso la parte mas alta del valor convertido de 12bit
-	DAC_UpdateValue(LPC_DAC, dac_value);
+	//DAC_UpdateValue(LPC_DAC, dac_value);
 }
 
 void TIMER0_IRQHandler(void){
-	TIM_ClearIntCapturePending(LPC_TIM0,TIM_MR1_INT);	    //limpio la bandera
+	flag_timer = 1;
+	TIM_ClearIntPending(LPC_TIM0, TIM_MR1_INT);	    //limpio la bandera
 	//LPC_GPIO0->FIOPIN ^= (1<<9);
 }
