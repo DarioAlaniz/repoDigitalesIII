@@ -76,9 +76,12 @@ int main(void) {
     		}
     		else{
     			period = current_val - previous_val;	//obtengo el periodo
-    			//para obtener el periodo hacemos (period + 1)/100e6
-    			//no se cumple cuando el periodo de la señal es igual o mayor a 500khz
-    			//puede ser un problema del tiempo de respuesta del pin, consultar!!!!
+    			// para obtener el periodo hacemos (period + 1)/100e6
+    			// no se cumple cuando el periodo de la señal es igual o mayor a 500khz
+    			// puede ser un problema del tiempo de respuesta del pin.
+    			// probar con version GATING_TIME de augusto metodo propio patentado!!!
+    			// http://www.ocfreaks.com/lpc1768-timer-input-capture-frequency-counter-tutorial/
+    			// para usar printf crear un proyecto como semi-host!!!
     		}
     		previous_val 	= current_val;  	//copio el valor capturado
     	}
