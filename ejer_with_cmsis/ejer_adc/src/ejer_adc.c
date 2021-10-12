@@ -84,7 +84,7 @@ void confPin(void){
 	confPin.Pinnum			= 26;	//P0.26
 	confPin.Funcnum			= 2;	//AOUT
 	PINSEL_ConfigPin(&confPin);
-	confPin.Pinnum			= 9;	//
+	confPin.Pinnum			= 9;	//P0.9
 	confPin.Pinmode			= 0; 	//pull up
 	confPin.Funcnum			= 0;	//Gpio
 	PINSEL_ConfigPin(&confPin);
@@ -92,16 +92,30 @@ void confPin(void){
 }
 
 void confAdc(void){
-	uint16_t clear_flag;
-	ADC_Init(LPC_ADC, FREQ_SAMPLE); 					//power on, habilito el PCADC
+	/* cmsis setea mal el divisor de clk del adc para la frequencia maxima
+	 * si clk/4 = 25Mhz --> cmsis establece este valor al adc
+	 * si clk/8 = 12.5Mhz --> cmsis establece un valor negativo en divisor interno del adc
+	 * si clk/2 = 50Mhz --> cmsis establece un valor de 2 al divisor interno
+	 * si clk/1 = 100Mhz --> cmsis establece un valor de 6 al divisor interno 16.66Mhz
+	 *
+	 * En todas las configuracion posibles para la frecuencia de muestreo maxima cmsis
+	 * setea mal el valor, por lo que seria mejor hacerlo con punteros.
+	 */
+//	CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_ADC, 1); 			//clk/2
+//	ADC_Init(LPC_ADC, FREQ_SAMPLE); 					//power on, habilito el PCADC
+
+	LPC_SC->PCONP	 |= (1<<12);						//power on, habilito el PCADC
+	LPC_SC->PCLKSEL0 |= (3<<24);						//clk/8
+	LPC_ADC->ADCR	 &= ~(0xFF<<8);						//clkdiv adc en 0
+
 	ADC_PowerdownCmd(LPC_ADC, ENABLE);					//pongo en funcionamiento el ADC
 	ADC_ChannelCmd(LPC_ADC, ADC_CHANNEL_0, ENABLE); 	//habilito solo el canal 0
-	ADC_StartCmd(LPC_ADC, ADC_START_ON_MAT01);			//habilito el adc para cuando hace match con el timer0
-	ADC_EdgeStartConfig(LPC_ADC, 1);
-//	ADC_BurstCmd(LPC_ADC, ENABLE);
+	ADC_BurstCmd(LPC_ADC, ENABLE);
+//	ADC_StartCmd(LPC_ADC, ADC_START_ON_MAT01);			//habilito el adc para cuando hace match con el timer0
+//	ADC_EdgeStartConfig(LPC_ADC, 1);
 	ADC_IntConfig(LPC_ADC,ADC_ADGINTEN,RESET);			//desabilito la interrup global que por defecto es 1
 	ADC_IntConfig(LPC_ADC,ADC_ADINTEN0,ENABLE);			//habilito la interrupcion para el canal 0
-	clear_flag = ADC_ChannelGetData(LPC_ADC,ADC_CHANNEL_0);  //limpio la badera de interrupcion
+	LPC_ADC->ADDR0	&= LPC_ADC->ADDR0;					//limpio la badera de interrupcion leyendo el registro
 	NVIC_ClearPendingIRQ(ADC_IRQn);						// limpio la bandera
 	NVIC_EnableIRQ(ADC_IRQn);							//habilito la interrupcion por adc
 }
@@ -118,7 +132,7 @@ void confTimer0(void){
 	confMatchTimer0.MatchChannel	  = 1;				//MAT0.1
 	confMatchTimer0.ResetOnMatch	  = 1;
 	confMatchTimer0.MatchValue		  = 8;				//5us --> 200Khz de tasa de muestreo
-	confMatchTimer0.IntOnMatch		  = ENABLE;			//habilito solo para comprobar que llega al match
+//	confMatchTimer0.IntOnMatch		  = ENABLE;			//habilito solo para comprobar que llega al match
 	confMatchTimer0.ExtMatchOutputType	= TIM_EXTMATCH_TOGGLE;
 	TIM_ConfigMatch(LPC_TIM0, &confMatchTimer0);
 
@@ -134,13 +148,14 @@ void confDac(void){
 }
 
 void ADC_IRQHandler(void){
-	flag_adc  = 1;
+//	LPC_GPIO0->FIOPIN ^= (1<<9);
+//	flag_adc  = 1;
 	adc_value = ADC_ChannelGetData(LPC_ADC,ADC_CHANNEL_0);  //obtengo el valor convertido
-	//DAC_UpdateValue(LPC_DAC, dac_value);
+	dac_value	= (adc_value>>2);
+	DAC_UpdateValue(LPC_DAC, dac_value);
 }
 
 void TIMER0_IRQHandler(void){
 	flag_timer = 1;
 	TIM_ClearIntPending(LPC_TIM0, TIM_MR1_INT);	    //limpio la bandera
-	//LPC_GPIO0->FIOPIN ^= (1<<9);
 }
