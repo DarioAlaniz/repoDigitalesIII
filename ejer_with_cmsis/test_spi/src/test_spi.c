@@ -24,14 +24,18 @@
 
 #define BUFFER_LENGTH  PAYLOAD_WIDTH
 
+void checkData();
+
+
 uint8_t val0[5];
 uint8_t val1[5];
 
 uint8_t status;
 uint8_t conf[1];
-uint8_t buffer_tx[BUFFER_LENGTH] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0A};
+uint8_t buffer_tx[BUFFER_LENGTH];//= {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0A};
 uint8_t receiveData[BUFFER_LENGTH];
 uint8_t count_loss[1] = {0};
+uint8_t count_error;
 int main(void) {
 	confPin();
 	confSpi();
@@ -46,8 +50,12 @@ int main(void) {
 	nrf24_writeToNrf_RX(R, RF24_FIFO_STATUS, val0, 1);
 	confIntExt();
 	confIntExt1();
-	nrf24_transmit_payload(buffer_tx,BUFFER_LENGTH);
+	for(int i =0;i<BUFFER_LENGTH;i++){
+			buffer_tx[i] = i;
+		}
 	nrf24_listen_payload();
+	nrf24_transmit_payload(buffer_tx,BUFFER_LENGTH);
+	checkData();
     while(1) {
 
     }
@@ -84,4 +92,15 @@ void EINT1_IRQHandler (void) {
     nrf24_CE_high_RX();
 }
 
+void checkData(){
+	count_error=0;
+	for(int i=0;i<BUFFER_LENGTH;i++){
+		if(buffer_tx[i]!=receiveData[i]){
+			count_error++;
+		}
+		else {
+			//
+		}
+	}
+}
 

@@ -69,7 +69,7 @@ void confIntExt(void){
 	Eint0Cfg.EXTI_Mode		= 1;		//activo por flanco
 	Eint0Cfg.EXTI_polarity	= 0;   		//flanco de bajada
 	EXTI_Config(&Eint0Cfg);				//configuro la interrupcion, limpia la bandera
-	NVIC_SetPriority(EINT0_IRQn, 2);	//
+	NVIC_SetPriority(EINT0_IRQn, 3);	//
 	NVIC_EnableIRQ(EINT0_IRQn); 		//habilito la interrupcion
 	return;
 }
@@ -90,7 +90,7 @@ void confIntExt1(void){
 	Eint0Cfg.EXTI_Mode		= 1;		//activo por flanco
 	Eint0Cfg.EXTI_polarity	= 0;   		//flanco de bajada
 	EXTI_Config(&Eint0Cfg);				//configuro la interrupcion, limpia la bandera
-	NVIC_SetPriority(EINT1_IRQn, 3);	//
+	NVIC_SetPriority(EINT1_IRQn, 2);	//
 	NVIC_EnableIRQ(EINT1_IRQn); 		//habilito la interrupcion
 	return;
 }

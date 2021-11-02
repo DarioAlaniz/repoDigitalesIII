@@ -254,7 +254,7 @@ void nrf24_init_RX(uint8_t tx_rx) {
 
 void nrf24_listen_payload(void){
 	nrf24_CE_high_RX();
-	delay_ms(1000);
+	delay_us(150);		// tiempo que necesita para ponerse en modo RX
 }
 
 /*******************************************************************************************************/
