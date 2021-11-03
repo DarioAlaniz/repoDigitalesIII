@@ -18,3 +18,4 @@ void confTimer1 (void);
 void confTimer2 (void);
 void delay_us (uint16_t time);
 void delay_ms(uint16_t time);
+void initRit();

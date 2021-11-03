@@ -295,7 +295,7 @@
 #define W 1
 #define R 0
 
-#define PAYLOAD_WIDTH			  0x20
+#define PAYLOAD_WIDTH			  0x03
 
 void nrf24_writeToNrf (uint8_t readWrite, uint8_t reg, uint8_t *valArray, uint8_t length);
 uint8_t nrf24_status();
