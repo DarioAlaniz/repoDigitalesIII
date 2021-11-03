@@ -22,7 +22,7 @@
 
 #define PIN_SCK			15
 #define PIN_MISO		17
-#define PIN_MOSI		19
+#define PIN_MOSI		18
 
 #define LED_RED_TOGGLE() 	LPC_GPIO0 -> FIOPIN ^= (1 << 22)
 #define LED_BLUE_TOGGLE() 	LPC_GPIO3 -> FIOPIN ^= (1 << 26)

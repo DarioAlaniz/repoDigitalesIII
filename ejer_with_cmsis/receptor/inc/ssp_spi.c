@@ -20,7 +20,7 @@ void confSpi(void){
 	confSpi.CPHA 		= SSP_CPHA_FIRST;
 	confSpi.CPOL 		= (0<<6);
 	confSpi.ClockRate	= CLK_SPI;
-	CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_SSP1,CLKPWR_PCLKSEL_CCLK_DIV_1); //100Mhz
+	CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_SSP0,CLKPWR_PCLKSEL_CCLK_DIV_1); //100Mhz
 	SSP_Init(LPC_SSP_SEL, &confSpi);
 	SSP_Cmd(LPC_SSP_SEL, ENABLE);
 	LPC_SSP_SEL->DR = 0; //limpio lo que tenga el registro
