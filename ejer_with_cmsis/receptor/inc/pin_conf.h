@@ -18,11 +18,11 @@
 #define PIN_EINT		10
 
 #define PORT_CE_NRF24 	0
-#define PIN_CE_NRF24 	0
+#define PIN_CE_NRF24 	1
 
-#define PIN_SCK			7
-#define PIN_MISO		8
-#define PIN_MOSI		9
+#define PIN_SCK			15
+#define PIN_MISO		17
+#define PIN_MOSI		19
 
 #define LED_RED_TOGGLE() 	LPC_GPIO0 -> FIOPIN ^= (1 << 22)
 #define LED_BLUE_TOGGLE() 	LPC_GPIO3 -> FIOPIN ^= (1 << 26)

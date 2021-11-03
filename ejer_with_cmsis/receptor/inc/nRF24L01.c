@@ -142,5 +142,5 @@ void nrf24_CE_low(void){
 
 void nrf24_listen_payload(void){
 	nrf24_CE_high();
-	delay_us(150);		// tiempo que necesita para ponerse en modo RX
+	delay_us(150);				// tiempo que necesita para ponerse en modo RX
 }

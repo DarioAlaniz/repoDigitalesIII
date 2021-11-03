@@ -19,8 +19,8 @@
 #define PIN_SSEL1   6
 
 
-#define LPC_SSP_SEL LPC_SSP1
-#define PIN_SSEL	PIN_SSEL1
+#define LPC_SSP_SEL LPC_SSP0
+#define PIN_SSEL	PIN_SSEL0
 
 
 
