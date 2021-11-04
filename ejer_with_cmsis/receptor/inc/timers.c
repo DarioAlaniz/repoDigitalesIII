@@ -30,23 +30,7 @@ void confTimer2 (void) {
 	TIM_Init(LPC_TIM2, TIM_TIMER_MODE, &timer2_conf); 	//TIM_Init no le da enable
 }
 
-void initRit(){
-	//inicializar timer, por defecto habilitado
-	RIT_Init(LPC_RIT);
-	//apagar para config
-	RIT_Cmd(LPC_RIT, DISABLE);
 
-	//configurar para 166ms
-	RIT_TimerConfig(LPC_RIT, 166);
-	//pasar a micro segundos
-	LPC_RIT->RICOMPVAL=(unsigned int)((LPC_RIT->RICOMPVAL)/1000);
-
-	//limpiar pending y cargar en NVIC
-	NVIC_ClearPendingIRQ(RIT_IRQn);
-	NVIC_EnableIRQ(RIT_IRQn);
-
-	return;
-}
 
 
 void delay_us (uint16_t time) {

@@ -108,7 +108,7 @@ uint32_t promedio(uint16_t* ptr){
 		prom += *ptr;
 		ptr+=4;
 	}
-	return prom;
+	return prom/BUFFER_FOR_CHANEL;
 }
 
 

@@ -29,18 +29,22 @@
 #define KEY			   0xAA
 
 
-uint8_t val[5];
-uint8_t buffer_tx[BUFFER_LENGTH];
-uint8_t receiveData[BUFFER_LENGTH];
-uint8_t count_error;
-uint8_t status;
-uint8_t flag_recv_data;
-uint16_t dac_value;
+uint8_t 	val[5];
+uint8_t 	buffer_tx[BUFFER_LENGTH];
+uint8_t 	receiveData[BUFFER_LENGTH];
+uint8_t 	count_error;
+uint8_t 	status;
+uint8_t 	flag_recv_data;
+uint16_t 	dac_value;
+
+
 void checkData();
 int main(void) {
-	for(int i =0;i<BUFFER_LENGTH;i++){
-		buffer_tx[i] = i;
-	}
+//	for(int i =0;i<BUFFER_LENGTH;i++){
+//		buffer_tx[i] = i;
+//	}
+	/* System Clock Init */
+	SystemInit();
 	confPin();
 	initLEDPins();
 	confSpi();
@@ -49,20 +53,29 @@ int main(void) {
 	confTimer2();
 	//initRit();
 	initDAC();
-	nrf24_init(0);
+	nrf24_init(0);  //Modo Rx
 
 	//habilito modulo en RX
 	nrf24_listen_payload();
-	LED_BLUE_TOGGLE();
+	LPC_GPIO3 -> FIOCLR |= (1 << 26);			//luz azul , escuchando
     while(1) {
-    	if(flag_recv_data){
+    	if(flag_recv_data){ 					//llego un paquete
     		flag_recv_data = 0;
-    		if(receiveData[0] == KEY){
+    		if(receiveData[0] == KEY){			//tiene el inicio de trama valido
     			dac_value = (((uint16_t)receiveData[1]) << 8) | (receiveData[2]);
     			DAC_UpdateValue(LPC_DAC, (dac_value>>2)&0x3FF);
     		}
-    		LED_BLUE_TOGGLE();
-			LED_GREEN_TOGGLE();
+    		else {
+    			LPC_GPIO3 -> FIOSET |= (1 << 25);
+    			LPC_GPIO3 -> FIOSET |= (1 << 26);
+    			LPC_GPIO0 -> FIOCLR |= (1 << 22); 	//luz violeta
+//    			nrf24_CE_low();
+//    			delay_ms(1000);					//dejo de escuchar por un 1 segundo
+//    			LED_BLUE_TOGGLE();
+//				LED_RED_TOGGLE();
+//				nrf24_CE_high();				//vuelvo a escuchar
+    		}
+
     	}
     }
     return 0 ;
@@ -74,17 +87,17 @@ void EINT0_IRQHandler (void) {
     EXTI_ClearEXTIFlag(0);
     nrf24_CE_low();
     uint8_t status = nrf24_status();
-    if(status & RF24_MASK_RX_DR) {
+    if(status & RF24_MASK_RX_DR) {	//si la interrupcion de un paquete es valida, extraigo todo lo de la fifoRX, no haria falta ya que estan es mascaradas las demas interrupciones que podrian saltar desde el nrf
     	flag_recv_data = 1;
-        aux0[0] = status | RF24_MASK_TX_DS | RF24_MASK_RX_DR;
-        nrf24_writeToNrf(R, RF24_R_RX_PAYLOAD, receiveData, sizeof(receiveData)); //leo la FIFO
-        nrf24_writeToNrf(W, RF24_STATUS, aux0, sizeof(aux0)); //limpio los flags
-        LED_BLUE_TOGGLE();
-        LED_GREEN_TOGGLE();
+        aux0[0] = status | RF24_MASK_TX_DS | RF24_MASK_RX_DR;						//valor para limpiar el flag de interrupcion del nrf
+        nrf24_writeToNrf(R, RF24_R_RX_PAYLOAD, receiveData, sizeof(receiveData)); 	//leo la FIFO
+        nrf24_writeToNrf(W, RF24_STATUS, aux0, sizeof(aux0)); 						//limpio los flags
+        LPC_GPIO3 -> FIOCLR |= (1 << 25);  //luz ver clara
         //checkData();
     }
     else {
-    	LED_RED_TOGGLE();
+    	LPC_GPIO3 -> FIOSET |= (1 << 25);
+    	LPC_GPIO0 -> FIOCLR |= (1 << 22); //luz violeta
     }
     nrf24_CE_high();
 }

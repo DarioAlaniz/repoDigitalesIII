@@ -124,11 +124,11 @@ void nrf24_init(uint8_t tx_rx) {
 void nrf24_transmit_payload(uint8_t * w_buffer,uint8_t length){
 	nrf24_writeToNrf(R, RF24_FLUSH_TX, w_buffer, 0); //limpia la fifoTX
 	nrf24_writeToNrf(R, RF24_W_TX_PAYLOAD, w_buffer, length);
-	delay_us(10);
+	delay_us(50);
 	nrf24_CE_high();
 	delay_us(160);
 	nrf24_CE_low();
-	delay_us(10);
+	delay_us(50);
 }
 
 
