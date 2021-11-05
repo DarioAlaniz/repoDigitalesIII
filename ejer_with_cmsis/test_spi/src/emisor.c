@@ -47,6 +47,7 @@
 #define Rx_RDA_INT 		(1<<0)
 #define MASK_INT_ID 	(0xE)
 #define MASK_RDA_INT 	(2)
+#define MASK_CTI_INT    (6)
 #define UARTx 			(LPC_UART_TypeDef*) LPC_UART2_BASE
 
 //Modulo Tx
@@ -56,10 +57,11 @@
 uint8_t buffer_tx[BUFFER_LENGTH];
 uint8_t receiveData[BUFFER_LENGTH];
 uint8_t count_error = 0;
-uint8_t currentKey = 0xF1;
+uint8_t currentKey 	= 0xF1;
 uint8_t readyToLoad = 1;
 uint8_t FlagErrorTransmission = 0;
 uint8_t cmd[2];
+uint8_t * p_cmd = cmd;
 
 //Var de ADC + filtro prom
 volatile uint32_t 	acc0=0;
@@ -67,7 +69,7 @@ volatile uint8_t 	samp=0;
 volatile uint8_t 	n=8; //TODO: PUEDE FALLAR xd
 volatile uint16_t 	res0=0;
 volatile uint16_t 	dacval=0;
-
+volatile uint8_t 	flag_adc;
 //proto uart
 void initUARTx(void);
 void initUART2(void);
@@ -81,7 +83,7 @@ void initADC(void);
 //proto Timers
 void initTMR0(void);
 void initTMR2(void);
-
+void confIntGPIO(void);
 
 int main(void) {
 	/* System Clock Init */
@@ -91,7 +93,7 @@ int main(void) {
 //	initUARTx();
 	initUART2();
 	initADC();
-	initTMR0(); // TODO: OJO modificar para Fs 8k
+	initTMR0(); // TODO:
 	confTimer1();
 	confTimer2();
 	confPin();
@@ -99,20 +101,20 @@ int main(void) {
 	confSpi();
 	nrf24_init(1);	//Modo TX-con auto acknowledge
 	confIntExt();
-
+	confIntGPIO();
 	/* Algorithm */
 	while(1) {
 		//TODO: lo nuevo
-		if(FlagErrorTransmission) {
-			//Error: turn off radio
-			TIM_Cmd(LPC_TIM0, DISABLE);
-			FlagErrorTransmission = 0;
-			blinkRedLed(1000);
-			delay_ms(1000);
-			blinkRedLed(1000);
-			delay_ms(1000);
-			blinkRedLed(1000);
-		}
+//		if(FlagErrorTransmission) {
+//			//Error: turn off radio
+//			TIM_Cmd(LPC_TIM0, DISABLE);
+//			FlagErrorTransmission = 0;
+//			blinkRedLed(1000);
+//			delay_ms(1000);
+//			blinkRedLed(1000);
+//			delay_ms(1000);
+//			blinkRedLed(1000);
+//		}
 //		UART_Receive(UARTx, (uint8_t *)cmd, sizeof(cmd), BLOCKING);
 		/*
 		 * Decide que comando ejecutar:
@@ -143,18 +145,31 @@ int main(void) {
 			//Turn on radio
 			TIM_ResetCounter(LPC_TIM0); //TMR0 enciende el adc, donde ocurre la transmision
 			TIM_Cmd(LPC_TIM0, ENABLE);
-			cmd[0]=0;
-			cmd[1]=0;
-		case 'f':
-			//Turn off radio
-			TIM_Cmd(LPC_TIM0, DISABLE);
+			ADC_ChannelCmd(LPC_ADC, 0, ENABLE);
 			cmd[0]=0;
 			cmd[1]=0;
 			break;
+//		case 'f':
+//			//Turn off radio
+//			TIM_Cmd(LPC_TIM0, DISABLE);
+//			cmd[0]=0;
+//			cmd[1]=0;
+//			break;
 		}
 		//LPC_UART2 -> FCR |= (3 << 1);
 	}
 	return 0 ;
+}
+
+void confIntGPIO(void){
+    //P0.1
+    LPC_PINCON -> PINSEL0 &= ~(0b11 << 2);  // PINSEL0 1:0
+    LPC_GPIO0 -> FIODIR &= ~(1<<1); //ENTRADA
+    LPC_PINCON -> PINMODE0 &= ~(0b11 << 2); //PINMODE0 1:0 pullup
+    LPC_GPIOINT -> IO0IntEnF |= (1 << 1); //Selecciono la interrupcion por flanco de bajada
+    LPC_GPIOINT -> IO0IntClr |= (1 << 1); //Limpia la bandera
+    NVIC_EnableIRQ(EINT3_IRQn); //Habilita las interrupciones por GPIO
+//    NVIC_SetPriority(EINT3_IRQn, 2);
 }
 
 /*
@@ -224,8 +239,6 @@ void initUART2(void)
     NVIC_SetPriority(UART2_IRQn, 1); //cambiar
 }
 
-
-
 /*
  * Config ADC
  * * P0.23 to AD0.0
@@ -248,6 +261,7 @@ void initADC(void) {
 	ADC_EdgeStartConfig(LPC_ADC, ADC_START_ON_FALLING); //configura EDGE de ADCR
 	ADC_IntConfig(LPC_ADC, ADC_ADGINTEN, SET); //configura individualmente las int por canales o la global
 	NVIC_ClearPendingIRQ(ADC_IRQn);
+	NVIC_SetPriority(ADC_IRQn, 3);
 	NVIC_EnableIRQ(ADC_IRQn);
 
 	//AD0.1-AD0.7 a GPIO, pull-down, salida digital, estado bajo
@@ -286,7 +300,7 @@ void initADC(void) {
 }
 
 /*
- * Config TMR0
+ *   Config TMR0
  * * Recordar F_MRx = 2*prom*F_s(deseada)
  * * F_s = 3 KHz, prom = 8 -> F_MRx = 48 KHz -> 20.8us
  * * Con 12us -> F_s(real)= 47.619 KHz
@@ -295,8 +309,8 @@ void initTMR0(void) {
 	LPC_SC -> PCONP |= (1 << 1); //enciende TMR0 (recordar que ya lo esta por defecto);
 	//LPC_SC -> PCLKSEL0 |= (1 << 2); //CCLK/1
 	LPC_TIM0 -> EMR |= (3 << 6); //toglear (funcion 3) EM0 (MAT0.1)
-	LPC_TIM0 -> PR = 25-1; //si PCLK = 25MHz entonces con ese PR se logra resolución de 1us
-	LPC_TIM0 -> MR1 = 21-1;
+	LPC_TIM0 -> PR 	= 	25-1;    //si PCLK = 25MHz entonces con ese PR se logra resolución de 1us
+	LPC_TIM0 -> MR1 = 	21-1;
 	LPC_TIM0 -> MCR |= (2 << 3); //solo resetar cuando se llegue match, no int, no stop
 	//LPC_TIM0 -> TCR = 3; //enable y reset en 1
 	//LPC_TIM0 -> TCR &= ~(2); //quito el reset
@@ -308,6 +322,10 @@ void UART2_IRQHandler(void) {
 	if (((uartIntSt & MASK_INT_ID) >> 1) == MASK_RDA_INT) {
 		UART_Receive(LPC_UART2, cmd, sizeof(cmd), BLOCKING); // TODO: cmd de 1 byte?
 	}
+	else if(((uartIntSt & MASK_INT_ID) >> 1) == MASK_CTI_INT){
+		uint8_t dummy = LPC_UART2->RBR;
+	}
+	//LPC_UART2 -> FCR |= (3 << 1);
 	//en teoria se limpia el flag cuando se efectua la lectura de los datos
 }
 
@@ -331,26 +349,7 @@ void ADC_IRQHandler(){
 		acc0=0;
 		samp=0;
 	}
-
 	return;
-}
-
-void blinkRedLed(int time) {
-	LED_RED_TOGGLE();
-	delay_ms(time);
-	LED_RED_TOGGLE();
-}
-
-void blinkGreenLed(int time) {
-	LED_GREEN_TOGGLE();
-	delay_ms(time);
-	LED_GREEN_TOGGLE();
-}
-
-void blinkBlueLed(int time) {
-	LED_BLUE_TOGGLE();
-	delay_ms(time);
-	LED_BLUE_TOGGLE();
 }
 
 void EINT0_IRQHandler(void) {
@@ -374,4 +373,28 @@ void EINT0_IRQHandler(void) {
 		nrf24_writeToNrf(W, RF24_STATUS, aux0 , sizeof(aux0)); //limpio el flag TX_DS y RX_DR
 		blinkGreenLed(10);
 	}
+}
+
+void EINT3_IRQHandler(void){
+   LPC_GPIOINT->IO0IntClr |= (1<<1);
+   TIM_Cmd(LPC_TIM0, DISABLE);
+   ADC_ChannelCmd(LPC_ADC, 0, DISABLE);
+}
+
+void blinkRedLed(int time) {
+	LED_RED_TOGGLE();
+	delay_ms(time);
+	LED_RED_TOGGLE();
+}
+
+void blinkGreenLed(int time) {
+	LED_GREEN_TOGGLE();
+	delay_ms(time);
+	LED_GREEN_TOGGLE();
+}
+
+void blinkBlueLed(int time) {
+	LED_BLUE_TOGGLE();
+	delay_ms(time);
+	LED_BLUE_TOGGLE();
 }
